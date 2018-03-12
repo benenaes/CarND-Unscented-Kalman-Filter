@@ -7,9 +7,6 @@
 #include <string>
 #include <fstream>
 
-using Eigen::MatrixXd;
-using Eigen::VectorXd;
-
 class UKF {
 public:
 
@@ -23,16 +20,20 @@ public:
   bool use_radar_;
 
   ///* state vector: [pos1 pos2 vel_abs yaw_angle yaw_rate] in SI units and rad
-  VectorXd x_;
+  Eigen::VectorXd x_;
 
   ///* state covariance matrix
-  MatrixXd P_;
+  Eigen::MatrixXd P_;
 
   ///* predicted sigma points matrix
-  MatrixXd Xsig_pred_;
+  Eigen::MatrixXd Xsig_pred_;
 
-  ///* time when the state is true, in us
-  long long time_us_;
+  Eigen::MatrixXd R_laser_;
+  Eigen::MatrixXd H_laser_;
+  Eigen::MatrixXd R_radar_;
+
+  // previous timestamp
+  long long previous_timestamp_;
 
   ///* Process noise standard deviation longitudinal acceleration in m/s^2
   double std_a_;
@@ -56,17 +57,26 @@ public:
   double std_radrd_ ;
 
   ///* Weights of sigma points
-  VectorXd weights_;
+  Eigen::VectorXd weights_;
 
   ///* State dimension
-  int n_x_;
+  const int n_x_;
 
   ///* Augmented state dimension
-  int n_aug_;
+  const int n_aug_;
 
   ///* Sigma point spreading parameter
-  double lambda_;
+  const double lambda_;
 
+  ///* NIS
+  double nis_;
+
+  unsigned int radar_nis_count_;
+  unsigned int radar_nis_5_percentile_count_;
+  unsigned int radar_nis_95_percentile_count_;
+  unsigned int lidar_nis_count_;
+  unsigned int lidar_nis_5_percentile_count_;
+  unsigned int lidar_nis_95_percentile_count_;
 
   /**
    * Constructor
@@ -82,7 +92,7 @@ public:
    * ProcessMeasurement
    * @param meas_package The latest measurement data of either radar or laser
    */
-  void ProcessMeasurement(MeasurementPackage meas_package);
+  void ProcessMeasurement(const MeasurementPackage & meas_package);
 
   /**
    * Prediction Predicts sigma points, the state, and the state covariance
@@ -95,13 +105,20 @@ public:
    * Updates the state and the state covariance matrix using a laser measurement
    * @param meas_package The measurement at k+1
    */
-  void UpdateLidar(MeasurementPackage meas_package);
+  void UpdateLidar(const MeasurementPackage & meas_package);
 
   /**
    * Updates the state and the state covariance matrix using a radar measurement
    * @param meas_package The measurement at k+1
    */
-  void UpdateRadar(MeasurementPackage meas_package);
+  void UpdateRadar(const MeasurementPackage & meas_package);
+
+private:
+	Eigen::MatrixXd AugmentedSigmaPoints();
+
+	void SigmaPointPrediction(const Eigen::MatrixXd& Xsig_aug, const double delta_t);
+
+	void PredictMeanAndCovariance();
 };
 
 #endif /* UKF_H */
